@@ -1,0 +1,8 @@
+QRServer: QRServer.o QRClient.o
+    g++ -o QRServer QRServer.cpp
+
+QRServer: QRServer.cpp
+    g++ -c QRServer.cpp
+
+QRClient: QRClient.cpp
+    g++ -c QRClient.cpp

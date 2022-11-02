@@ -5,7 +5,10 @@
 #include <string.h>       /* for memset() */
 #include <unistd.h>      /* for close() */
 
-#define MAXPENDING 5             /* Maximum outstanding connection requests */
+#define DEFAULT_PORT 2012   //sets the default port to 2012
+#define DEFAULT_RATE 3      //sets the default rate to 3
+#define DEFAULT_MAX_USER 3  //sets the default max user to 3
+#define DEFAULT_TIME_OUT 80 //sets the default time out to 80
 //need to be changed so can't be define
 void DieWithError(char *errorMessage);     /* Error handling function */
 //also communicate with client, diff errors so if statements
