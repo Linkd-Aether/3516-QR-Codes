@@ -10,7 +10,7 @@
 #define DEFAULT_MAX_USER 3  //sets the default max user to 3
 #define DEFAULT_TIME_OUT 80 //sets the default time out to 80
 
-void DieWithError(char *errorMessage);     /* Error handling function */
+void DieWithError(const char *errorMsg);     /* Error handling function */
 //also communicate with client, diff errors so if statements
 
 void HandleTCPClient(int clntSocket);       /* TCP client handling function */
@@ -30,14 +30,33 @@ int main(int argc, char *argv[])
      int maxUsers = DEFAULT_MAX_USER;
      int timeOut = DEFAULT_TIME_OUT;
      int opt;
+
       if (argc > 4)     /* Test for correct number of arguments */
      { 
            fprintf(stderr, "Usage:  %s <Server Port>\n", argv[0]);
             exit(1);
      }
 
-     while((opt = getopt(argc, argv, "PORT")) != -1){
-
+     while((opt = getopt(argc, argv, "P:R:M:T:")) != -1){
+         switch (opt) {
+             case 'P':
+                 port = atoi(optarg);
+                 printf("port is set to %d\n", port);
+                 break;
+             case 'R':
+                 rate = atoi(optarg);
+                 printf("rate is set to %d\n", rate);
+                 break;
+             case 'M':
+                 maxUsers = atoi(optarg);
+                 printf("max users is set to %d\n", maxUsers);
+             case 'T':
+                 timeOut = atoi(optarg);
+                 printf("time out is set to %d\n", timeOut);
+             default:
+                 printf("incorrectly formatted, you smell\n");
+                 break;
+         }
 
      }
      echoServPort = atoi(argv[1]);        /* First arg:  local port */
@@ -45,7 +64,7 @@ int main(int argc, char *argv[])
 	 
     /* Create socket for incoming connections */
       if ((servSock = socket (AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) 
-     	DieWithError("socket() failed");   
+     	DieWithError("socket() failed");
 
 /* Construct local address structure */
     memset(&echoServAddr, 0, sizeof(echoServAddr));         /* Zero out structure */
@@ -72,7 +91,7 @@ int main(int argc, char *argv[])
 	DieWithError("bind() failed");
 
     /* Mark the socket so it will listen for incoming connections */
-    if (listen (servSock, MAXPENDING) < 0)
+    if (listen (servSock, maxUsers) < 0)
     	DieWithError("listen() failed");
 	for (;;) /* Run forever */
     {
@@ -86,9 +105,18 @@ int main(int argc, char *argv[])
         HandleTCPClient(clntSock);
      }
      /* NOT REACHED */
-    } 
-	
-	//what else are we doing?
+    }
+
+void DieWithError(const char *errorMsg){
+    printf("%s error", errorMsg);
+}
+
+void HandleTCPClient(int clntSocket){
+
+}
+
+
+//what else are we doing?
 	/*
 		log everything that's happening
 		server gets a length of what they send

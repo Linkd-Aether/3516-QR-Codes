@@ -5,9 +5,9 @@
 #include <string.h>       /* for memset() */
 #include <unistd.h>      /* for close() */ 
 
-#define RCVBUFSIZE 32   /* Size of receive buffer */
+#define RCVBUFSIZE 8   /* Size of receive buffer */
 
-void DieWithError(char* errorMessage);  /* Error handling function */
+void DieWithError(const char* errorMessage);  /* Error handling function */
 int main(int argc, char* argv[])
 
 {
@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
     {
         fprintf(stderr, "Usage: %s <Server IP> <Echo Word> [<Echo Port>]\n",
             argv[0]);
-        exit(1)
+        exit(1);
     }
     servIP = argv[1];                /* First arg: server IP address (dotted quad) */
     echoString = argv[2];         /* Second arg: string to echo */
@@ -70,3 +70,8 @@ int main(int argc, char* argv[])
     close(sock);
     exit(0);
 }
+
+void DieWithError(const char *errorMsg){
+    printf("%s error", errorMsg);
+}
+
