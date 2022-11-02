@@ -10,6 +10,7 @@
 void DieWithError(const char* errorMessage);  /* Error handling function */
 int main(int argc, char* argv[])
 
+
 {
     int sock;                                                /* Socket descriptor */
     struct sockaddr_in echoServAddr;  /* Echo server address */
