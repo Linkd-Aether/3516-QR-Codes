@@ -9,9 +9,10 @@
 #define DEFAULT_RATE 3      //sets the default rate to 3
 #define DEFAULT_MAX_USER 3  //sets the default max user to 3
 #define DEFAULT_TIME_OUT 80 //sets the default time out to 80
-//need to be changed so can't be define
+
 void DieWithError(char *errorMessage);     /* Error handling function */
 //also communicate with client, diff errors so if statements
+
 void HandleTCPClient(int clntSocket);       /* TCP client handling function */
 //logic of decoding QR code and sending it back
 
@@ -23,12 +24,21 @@ int main(int argc, char *argv[])
      struct sockaddr_in echoServAddr; /* Local address */
      struct sockaddr_in echoClntAddr; /* Client address */
      unsigned short echoServPort;        /* Server port */
-     unsigned int clntLen;                     /* Length of client address data structure */ 
-
-      if (argc != 4)     /* Test for correct number of arguments */
+     unsigned int clntLen;                     /* Length of client address data structure */
+     int port = DEFAULT_PORT;
+     int rate = DEFAULT_RATE;
+     int maxUsers = DEFAULT_MAX_USER;
+     int timeOut = DEFAULT_TIME_OUT;
+     int opt;
+      if (argc > 4)     /* Test for correct number of arguments */
      { 
            fprintf(stderr, "Usage:  %s <Server Port>\n", argv[0]);
-            exit(1);   
+            exit(1);
+     }
+
+     while((opt = getopt(argc, argv, "PORT")) != -1){
+
+
      }
      echoServPort = atoi(argv[1]);        /* First arg:  local port */
 	 //change to correct port instead of argv[1]
@@ -48,7 +58,7 @@ int main(int argc, char *argv[])
 	DieWithError("bind() failed");
 
     /* Mark the socket so it will listen for incoming connections */
-    if (listen (servSock, MAXPENDING) < 0)
+    if (listen (servSock, DEFAULT_MAX_USER) < 0)
     	DieWithError("listen() failed");
 	
 	/* Construct local address structure */
