@@ -4,11 +4,14 @@
 #include <stdlib.h>       /* for atoi() and exit() */
 #include <string.h>       /* for memset() */
 #include <unistd.h>      /* for close() */
+#include <iostream>
 
 #define DEFAULT_PORT 2012   //sets the default port to 2012
 #define DEFAULT_RATE 3      //sets the default rate to 3
 #define DEFAULT_MAX_USER 3  //sets the default max user to 3
 #define DEFAULT_TIME_OUT 80 //sets the default time out to 80
+#define RCVBUFSIZE 8
+#define MAX_AMOUNT 4096
 
 void DieWithError(const char *errorMsg);     /* Error handling function */
 //also communicate with client, diff errors so if statements
@@ -116,6 +119,14 @@ void DieWithError(const char *errorMsg){
 }
 
 void HandleTCPClient(int clntSocket){
+    while((n = read(clntSocket, reinterpret_cast<void *>(RCVBUFSIZE), MAX_AMOUNT - 1)) > 0){
+        std::cout << "\n%s\n\n%s" << std::endl;
+        if (RCVBUFSIZE[n-1] == '\n'){
+            break;
+        }
+
+    }
+
 
 }
 
