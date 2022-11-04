@@ -10,8 +10,10 @@
 #define DEFAULT_RATE 3      //sets the default rate to 3
 #define DEFAULT_MAX_USER 3  //sets the default max user to 3
 #define DEFAULT_TIME_OUT 80 //sets the default time out to 80
-#define RCVBUFSIZE 8
+#define RCVBUFSIZE 50000
 #define MAX_AMOUNT 4096
+
+
 
 void DieWithError(const char *errorMsg);     /* Error handling function */
 //also communicate with client, diff errors so if statements

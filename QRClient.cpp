@@ -5,7 +5,7 @@
 #include <string.h>       /* for memset() */
 #include <unistd.h>      /* for close() */ 
 
-#define RCVBUFSIZE 8   /* Size of receive buffer */
+#define RCVBUFSIZE 50000   /* Size of receive buffer, 50kb */
 
 void DieWithError(const char* errorMessage);  /* Error handling function */
 int main(int argc, char* argv[])
