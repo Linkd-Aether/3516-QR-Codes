@@ -121,7 +121,7 @@ void DieWithError(const char *errorMsg){
 }
 
 void HandleTCPClient(int clntSocket){
-    while((n = read(clntSocket, *RCVBUFSIZE, MAX_AMOUNT - 1)) > 0){
+    while((n = read(clntSocket, rcvBuffer, MAX_AMOUNT - 1)) > 0){
         std::cout << "\n%s\n\n%s" << std::endl;
         if (RCVBUFSIZE[n-1] == '\n'){
             break;
