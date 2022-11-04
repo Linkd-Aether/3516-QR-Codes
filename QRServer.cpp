@@ -13,7 +13,7 @@
 #define RCVBUFSIZE 50000
 #define MAX_AMOUNT 4096
 
-char* rcvBuffer = new char[RCVBUFSIZE];
+char* buffer = new char[RCVBUFSIZE];
 
 void DieWithError(const char *errorMsg);     /* Error handling function */
 //also communicate with client, diff errors so if statements
@@ -121,7 +121,7 @@ void DieWithError(const char *errorMsg){
 }
 
 void HandleTCPClient(int clntSocket){
-    while((n = recv(clntSocket, rcvBuffer, MAX_AMOUNT - 1, 0)) > 0){
+    while((n = recv(clntSocket, buffer, MAX_AMOUNT - 1, 0)) > 0){
 
 
 
