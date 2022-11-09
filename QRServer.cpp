@@ -5,6 +5,7 @@
 #include <string.h>       /* for memset() */
 #include <unistd.h>      /* for close() */
 #include <iostream>
+#include <pthread.h>
 
 #define DEFAULT_PORT 2012   //sets the default port to 2012
 #define DEFAULT_RATE 3      //sets the default rate to 3
@@ -36,6 +37,7 @@ int main(int argc, char *argv[])
      int timeOut = DEFAULT_TIME_OUT;
      int opt;
 
+    pthread_t threadID;
       if (argc > 4)     /* Test for correct number of arguments */
      { 
            fprintf(stderr, "Usage:  %s <Server Port>\n", argv[0]);
@@ -109,7 +111,9 @@ int main(int argc, char *argv[])
 
         /* clntSock is connected to a client! */
         printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
-        HandleTCPClient(clntSock);
+        if(pthread_create(&threadID, NULL, void* (HandleTCPClient), clntSock) < 0 {
+            DieWithError
+        }
 
 
      }
