@@ -5,13 +5,19 @@
 #include <string.h>       /* for memset() */
 #include <unistd.h>      /* for close() */
 #include <iostream>
+#include <errno.h>
+#include <sys/types.h>
+#include <netinet/in.h>
 #include <pthread.h>
+#include <netdb.h>
+#include <sys/wait.h>
+#include <signal.h>
 
 #define DEFAULT_PORT 2012   //sets the default port to 2012
 #define DEFAULT_RATE 3      //sets the default rate to 3
 #define DEFAULT_MAX_USER 3  //sets the default max user to 3
 #define DEFAULT_TIME_OUT 80 //sets the default time out to 80
-#define RCVBUFSIZE 50000
+#define RCVBUFSIZE 500
 #define MAX_AMOUNT 4096
 
 char* buffer = new char[RCVBUFSIZE];
@@ -37,7 +43,7 @@ int main(int argc, char *argv[])
      int timeOut = DEFAULT_TIME_OUT;
      int opt;
 
-    pthread_t threadID;
+    printf("Test\n");
       if (argc > 4)     /* Test for correct number of arguments */
      { 
            fprintf(stderr, "Usage:  %s <Server Port>\n", argv[0]);
@@ -111,9 +117,11 @@ int main(int argc, char *argv[])
 
         /* clntSock is connected to a client! */
         printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
-        if(pthread_create(&threadID, NULL, void* (HandleTCPClient), clntSock) < 0 {
-            DieWithError
-        }
+        //if(pthread_create(&threadID, NULL, void* (HandleTCPClient), clntSock) < 0 {
+        //    DieWithError("Thread Not Created");
+       // }
+        //pthread_join(&threadID, NULL);
+
 
 
      }
@@ -125,13 +133,11 @@ void DieWithError(const char *errorMsg){
 }
 
 void HandleTCPClient(int clntSocket){
-    while((n = recv(clntSocket, buffer, MAX_AMOUNT - 1, 0)) > 0){
 
-
-
-    }
-
-
+    if (clntSocket->clntSocket_famil)
+    int savedErrorNum = errNum;
+    white(waitpid(-1,NULL,WNOHANG) > 0);
+    errNum = savedErrorNum;
 }
 
 
