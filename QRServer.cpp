@@ -5,7 +5,6 @@
 #include <string.h>       /* for memset() */
 #include <unistd.h>      /* for close() */
 #include <iostream>
-#include <errno.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <pthread.h>
@@ -17,18 +16,17 @@
 #define DEFAULT_RATE 3      //sets the default rate to 3
 #define DEFAULT_MAX_USER 3  //sets the default max user to 3
 #define DEFAULT_TIME_OUT 80 //sets the default time out to 80
-#define RCVBUFSIZE 500
-#define MAX_AMOUNT 4096
+#define RCVBUFSIZE 50000 //50 kb for receiving
 
 char* buffer = new char[RCVBUFSIZE];
 
 void DieWithError(const char *errorMsg);     /* Error handling function */
 //also communicate with client, diff errors so if statements
 
+//void *getAddress(struct sockaddr *sa);
+
 void HandleTCPClient(int clntSocket);       /* TCP client handling function */
 //logic of decoding QR code and sending it back
-
-//while loop with geopt(), check for what is specified, moves to end until null is returned
 
 int main(int argc, char *argv[])
 {    int servSock;                                   /*Socket descriptor for server */
@@ -138,6 +136,13 @@ void HandleTCPClient(int clntSocket){
     int savedErrorNum = errNum;
     white(waitpid(-1,NULL,WNOHANG) > 0);
     errNum = savedErrorNum;
+}
+
+void *getAddress(struct sockaddr *sa){
+    if (sa->sa_family == AF_INET) {
+        return &(((struct sockaddr_in*)sa)->sin_addr);
+    }
+    return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
 
