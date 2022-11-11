@@ -1,4 +1,4 @@
-all: QRServer QRClient
+all: clean QRServer QRClient
 QRServer: QRServer.cpp
 	g++ -o QRServer QRServer.cpp
 QRClient: QRClient.cpp
