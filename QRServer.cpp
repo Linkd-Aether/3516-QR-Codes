@@ -5,6 +5,7 @@
 #include <string.h>       /* for memset() */
 #include <unistd.h>      /* for close() */
 #include <iostream>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <pthread.h>
@@ -12,6 +13,8 @@
 #include <sys/wait.h>
 #include <signal.h>
 
+#define TRUE 1
+#define FALSE 0
 #define DEFAULT_PORT 2012   //sets the default port to 2012
 #define DEFAULT_RATE 3      //sets the default rate to 3
 #define DEFAULT_MAX_USER 3  //sets the default max user to 3
@@ -29,113 +32,159 @@ void HandleTCPClient(int clntSocket);       /* TCP client handling function */
 //logic of decoding QR code and sending it back
 
 int main(int argc, char *argv[])
-{    int servSock;                                   /*Socket descriptor for server */
-     int clntSock;                                   /* Socket descriptor for client */
-     struct sockaddr_in echoServAddr; /* Local address */
-     struct sockaddr_in echoClntAddr; /* Client address */
-     unsigned short echoServPort;        /* Server port */
-     unsigned int clntLen;                     /* Length of client address data structure */
-     int port = DEFAULT_PORT;
-     int rate = DEFAULT_RATE;
-     int maxUsers = DEFAULT_MAX_USER;
-     int timeOut = DEFAULT_TIME_OUT;
-     int opt;
+{
+    int opt = TRUE;
+    int masterSocket, addressLength, newSocket, clntSocket[3], activity, i, valRead, sd;
+    int maxSd;
+    int port = DEFAULT_PORT;
+    int rate = DEFAULT_RATE;
+    int maxUsers = DEFAULT_MAX_USER;
+    int timeOut = DEFAULT_TIME_OUT;
+    struct sockaddr_in address; //address info of socket
+    char buffer[20481]; // 20kb buffer
 
-    printf("Test\n");
-      if (argc > 4)     /* Test for correct number of arguments */
-     { 
-           fprintf(stderr, "Usage:  %s <Server Port>\n", argv[0]);
-            exit(1);
-     }
+    //set of socket descriptors
+    fd_set readfds;
 
-     while((opt = getopt(argc, argv, "P:R:M:T:")) != -1){
-         switch (opt) {
-             case 'P':
-                 port = atoi(optarg);
-                 printf("port is set to %d\n", port);
-                 break;
-             case 'R':
-                 rate = atoi(optarg);
-                 printf("rate is set to %d\n", rate);
-                 break;
-             case 'M':
-                 maxUsers = atoi(optarg);
-                 printf("max users is set to %d\n", maxUsers);
-             case 'T':
-                 timeOut = atoi(optarg);
-                 printf("time out is set to %d\n", timeOut);
-             default:
-                 printf("incorrectly formatted, you smell\n");
-                 break;
-         }
+    //a message
+    char *message = "Echo message \r\n";
 
-     }
-     echoServPort = atoi(argv[1]);        /* First arg:  local port */
-	 //change to correct port instead of argv[1]
-	 
-    /* Create socket for incoming connections */
-      if ((servSock = socket (AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) 
-     	DieWithError("socket() failed");
+    //check for correct number of arguments
+    if (argc != 4){}
+    fprintf(stderr, "Usage: %s <Server Port>\n", argv[0]);
+    exit(1);
 
-/* Construct local address structure */
-    memset(&echoServAddr, 0, sizeof(echoServAddr));         /* Zero out structure */
-    echoServAddr.sin_family         = AF_INET;                      /* Internet address family */
-    echoServAddr.sin_addr.s_addr = htonl(INADDR_ANY); /* Any incoming interface */
-    echoServAddr.sin_port             = htons(echoServPort);     /* Local port */
-    
-    /* Bind to the local address */
-   if (bind (servSock, (struct sockaddr *) &echoServAddr, sizeof(echoServAddr)) < 0)
-	DieWithError("bind() failed");
-
-    /* Mark the socket so it will listen for incoming connections */
-    if (listen (servSock, DEFAULT_MAX_USER) < 0)
-    	DieWithError("listen() failed");
-	
-	/* Construct local address structure */
-    memset(&echoServAddr, 0, sizeof(echoServAddr));         /* Zero out structure */
-    echoServAddr.sin_family         = AF_INET;                      /* Internet address family */
-    echoServAddr.sin_addr.s_addr = htonl(INADDR_ANY); /* Any incoming interface */
-    echoServAddr.sin_port             = htons(echoServPort);     /* Local port */ //usually 80 but OS don't let everyone use port 80
-    
-    /* Bind to the local address */
-   if (bind (servSock, (struct sockaddr *) &echoServAddr, sizeof(echoServAddr)) < 0)
-	DieWithError("bind() failed");
-
-    /* Mark the socket so it will listen for incoming connections */
-    if (listen (servSock, maxUsers) < 0)
-    	DieWithError("listen() failed");
-
-	for (;;) /* Run forever */
-    {
-
-        /* Set the size of the in-out parameter */
-        clntLen = sizeof(echoClntAddr);        /* Wait for a client to connect */
-        if ((clntSock = accept (servSock, (struct sockaddr *) &echoClntAddr, &clntLen)) < 0)
-            DieWithError("accept() failed");
-
-        /* clntSock is connected to a client! */
-        printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
-        //if(pthread_create(&threadID, NULL, void* (HandleTCPClient), clntSock) < 0 {
-        //    DieWithError("Thread Not Created");
-       // }
-        //pthread_join(&threadID, NULL);
-
-
-
-     }
-     /* NOT REACHED */
+    //initialise all clntSocket[] to 0 so not check
+    for (i=0; i < mac_clients; i++){
+        clntSocket[i] = 0;
     }
+
+    //create a master socket for incoming connections
+    if ((masterSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0){
+        DieWithError("socket failed");
+        exit(EXIT_FAILURE);
+    }
+
+    //set master socket to allow multiple connections
+    if(setsockopt(masterSocket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0){
+        DieWithError("setsockopt");
+        exit(EXIT_FAILURE);
+    }
+
+    //type of socket created
+    memset(&address, 0, sizeof(address)); // zero out structure
+    address.sin_family = AF_INET;   //internet address family
+    address.sin_addr.s_addr = htonl(INADDR_ANY);   //any incoming interface
+    address.sin_port = htons(port);     //local port
+
+    //bind socket to local port/address
+    if (bind(masterSocket, (struct sockaddr *)&address, sizeof(address)) < 0){
+        DieWithError("bind failed");
+        exit(EXIT_FAILURE);
+    }
+    fprintf(stderr, "Listener on port %d \n", port);
+
+    //mark the socket so it will listen for incoming connections
+    if (listen(masterSocket, 0) < 0){
+        DieWithError("listen");
+        exit(EXIT_FAILURE);
+    }
+
+    //accept incoming connection
+    while(TRUE){
+        //set the size of the in-out param
+        addressLength = sizeof(address);
+        //wait for client to connect
+
+        FD_ZERO(&readfds);  //clear the socket set
+
+        //add master socket to set
+        FD_SET(masterSocket, &readfds);
+        maxSd = masterSocket;
+
+        //add child sockets to set
+        for (j = 0; j < maxUsers; j++){
+            //socket descriptor
+            sd - clntSocket[j];
+
+            //if valid socket descriptor then add to read list
+            if (sd > 0){
+                FD_SET(sd, &readfds);
+            }
+
+            //highest file descriptor number, need ti for the select function
+            if(sd > maxSd){
+                masSd = sd;
+            }
+
+            //wait for activity for timeout
+            activity = select(maxSd + 1, &readfds, NULL, NULL, timeOut);
+
+            if((activity < 0) && (errno != EINTR)){
+                printf("select error");
+            }
+
+            //if something is happening in the master socket, it's an incoming connection
+            if(FD_ISSET(masterSocket, &readfds)){
+                if((newSocket = accept(masterSocket, (struct sockaddr*)&address, (socklen_t*)&addressLength)) < 0){
+                    DieWithError("accept");
+                    exit(EXIT_FAILURE);
+                }
+                printf("Handling client %s\n", inet_ntoa(address.sin_addr));
+                HandleTCPClient(newSocket);
+
+                //send new connection greeting message
+                if(send(newSocket, message, strlen(message), 0) != strlen(message)){
+                    DieWithError("send");
+                }
+
+                //puts("welcome message sent successfully");
+
+                //add new socket to array of sockets
+                for (k = 0; k < maxUsers; k++){
+                    //if position is empty
+                    if(clntSocket[k] == 0){
+                        clntSocket[k] = newSocket;
+                        printf("adding to list of sockets as %d\n", k);
+                        break;
+                    }
+                }
+            }
+
+            //else it's some IO operation on some other socket
+            for(j = 0; j < maxUsers; j++) {
+                sd = clntSocket[j];
+                if (FD_ISSET(sd, &readfds)) {
+                    //check if it was for closing, read incoming msg
+                    if ((valRead = read(sd, buffer, 20480)) == 0) {
+                        //somebody disconnected, get his details and print
+                        getpeername(sd, (struct sockaddr *) &address, (socklen_t *) &addressLength);
+                        printf("Host disconnected, ip: %s, port: %d \n", inet_ntoa(address.sin_addr),
+                               ntohs(address.sin_port));
+                        //close the socket and mark 0 in list for reuse
+                        close(sd);
+                        clntSocket[j] = 0;
+                    }
+                        //echo msg that came in
+                    else {
+                        //set string  terminating NULL byte on the end of teh data read
+                        buffer[valRead] = '\0';
+                        send(sd, buffer, strlen(buffer), 0);
+                    }
+                }
+            }
+        }
+        return 0;
+    }
+
 
 void DieWithError(const char *errorMsg){
     printf("%s error", errorMsg);
 }
 
-void HandleTCPClient(int clntSocket){
+void HandleTCPClient(int clientSocket){
+    fprintf(stderr, "client socket is in HandleTCPClient\n");
 
-    if (clntSocket->clntSocket_famil)
-    int savedErrorNum = errNum;
-    white(waitpid(-1,NULL,WNOHANG) > 0);
-    errNum = savedErrorNum;
 }
 
 void *getAddress(struct sockaddr *sa){
