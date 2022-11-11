@@ -31,13 +31,13 @@ void HandleTCPClient(int clntSocket);       /* TCP client handling function */
 //logic of decoding QR code and sending it back
 
 int main(int argc, char *argv[]) {
-    int opt = TRUE;
-    int masterSocket, addressLength, newSocket, clntSocket[3], activity, i, valRead, sd;
-    int maxSd;
     int port = DEFAULT_PORT;
     int rate = DEFAULT_RATE;
     int maxUsers = DEFAULT_MAX_USER;
     int timeOut = DEFAULT_TIME_OUT;
+    int opt = TRUE;
+    int masterSocket, addressLength, newSocket, clntSocket[maxUsers], activity, i, valRead, sd;
+    int maxSd;
     struct sockaddr_in address; //address info of socket
     char buffer[RCVBUFSIZE]; // 20kb buffer
 
@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     printf("Listening on port %d \n",port);
 
     //mark the socket so it will listen for incoming connections
-    if (listen(masterSocket, 1) < 0) {
+    if (listen(masterSocket, 1) == -1) {
         DieWithError("listen");
     }
     printf("Made it past listen");
@@ -116,7 +116,7 @@ int main(int argc, char *argv[]) {
             int *timeval;
             timeval = &timeOut;
 
-            activity = select(maxSd + 1, &readfds, NULL, NULL, (struct timeval*)timeOut);
+            activity = select(maxSd + 1, &readfds, NULL, NULL, 0);
 
             if ((activity < 0) && (errno != EINTR)) {
                 printf("select error");
@@ -183,6 +183,7 @@ void DieWithError(const char *errorMsg){
 
 void HandleTCPClient(int clientSocket){
     fprintf(stderr, "client socket is in HandleTCPClient\n");
+    fopen("file.txt", "rb");
 
 }
 
@@ -205,7 +206,7 @@ void *getAddress(struct sockaddr *sa){
 			
 			
 		read from binary file
-			fopen("file.txt", rb);
+			fopen("file.txt", rw);
 		how big a transmitted file is
 			get it with 32 bit, need to convert because it's in network form
 			
