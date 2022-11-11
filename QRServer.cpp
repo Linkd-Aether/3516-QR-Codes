@@ -47,11 +47,6 @@ int main(int argc, char *argv[]) {
     //a message
     const char *message = "Echo message \r\n";
 
-    //check for correct number of arguments
-    if (argc != 4) {
-        fprintf(stderr, "Usage: %s <Server Port>\n", argv[0]);
-        exit(1);
-    }
     //initialise all clntSocket[] to 0 so not check
     for (i = 0; i < maxUsers; i++) {
         clntSocket[i] = 0;
@@ -72,7 +67,7 @@ int main(int argc, char *argv[]) {
     //type of socket created
     memset(&address, 0, sizeof(address)); // zero out structure
     address.sin_family = AF_INET;   //internet address family
-    address.sin_addr.s_addr = htonl(INADDR_ANY);   //any incoming interface
+    address.sin_addr.s_addr = htons(INADDR_ANY);   //any incoming interface
     address.sin_port = htons(port);     //local port
 
     //bind socket to local port/address
@@ -80,16 +75,18 @@ int main(int argc, char *argv[]) {
         DieWithError("bind failed");
         exit(EXIT_FAILURE);
     }
-    fprintf(stderr, "Listener on port %d \n", port);
+    //fprintf(stderr, "Listening on port %d \n", port);
+    printf("Listening on port %d \n",port);
 
     //mark the socket so it will listen for incoming connections
-    if (listen(masterSocket, 0) < 0) {
+    if (listen(masterSocket, 1) < 0) {
         DieWithError("listen");
-        exit(EXIT_FAILURE);
     }
+    printf("Made it past listen");
 
     //accept incoming connection
-    while (TRUE) {
+    for (;;) {
+        printf("Made it inside of while loop");
         //set the size of the in-out param
         addressLength = sizeof(address);
         //wait for client to connect
@@ -103,7 +100,7 @@ int main(int argc, char *argv[]) {
         //add child sockets to set
         for (int j = 0; j < maxUsers; j++) {
             //socket descriptor
-            sd - clntSocket[j];
+            sd = clntSocket[j];
 
             //if valid socket descriptor then add to read list
             if (sd > 0) {
@@ -116,6 +113,9 @@ int main(int argc, char *argv[]) {
             }
 
             //wait for activity for timeout
+            int *timeval;
+            timeval = &timeOut;
+
             activity = select(maxSd + 1, &readfds, NULL, NULL, (struct timeval*)timeOut);
 
             if ((activity < 0) && (errno != EINTR)) {
