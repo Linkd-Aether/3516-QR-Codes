@@ -63,6 +63,7 @@ int main(int argc, char* argv[])
         std::cin >> FileAddress;
 
         printf("Filename received\n");
+        std::cout << FileAddress << "\n";
 
         std::fstream imageIn("testcode.png", std::ios::binary);
 
