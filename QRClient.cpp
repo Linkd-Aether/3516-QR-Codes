@@ -1,9 +1,13 @@
 #include <stdio.h>          /* for printf() and fprintf() */
+#include <iostream>         /* for cin */
+#include <fstream>         /* for ifstream */
+#include <vector>          /* for vector */
 #include <sys/socket.h> /* for socket(), connect(), send(), and recv() */
 #include <arpa/inet.h>   /* for sockaddr_in and inet_addr() */
 #include <stdlib.h>        /* for atoi() and exit() */
 #include <string.h>       /* for memset() */
-#include <unistd.h>      /* for close() */ 
+#include <unistd.h>      /* for close() */
+#include <filesystem>       /* for testing */
 
 #define RCVBUFSIZE 50000   /* Size of receive buffer, 50kb */
 
@@ -16,22 +20,22 @@ int main(int argc, char* argv[])
     struct sockaddr_in echoServAddr;  /* Echo server address */
     unsigned short echoServPort;              /* Echo server port */
     char* servIP;                                        /* Server IP address (dotted quad) */
-    char* echoString;                                 /* String to send to echo server */
+    char* message;                                 /* String to send to echo server */
     char echoBuffer[RCVBUFSIZE];      /* Buffer for echo string */
-    unsigned int echoStringLen;               /* Length of string to echo */
-    int bytesRcvd, totalBytesRcvd;          /* Bytes read in single recv()                                         						and total bytes read */
+    unsigned int messageLen;               /* Length of string to echo */
+    int bytesRcvd, totalBytesRcvd;          /* Bytes read in single recv() and total bytes read */
 
-    if ((argc < 3) || (argc > 4))    /* Test for correct number of arguments */
+    if ((argc < 2) || (argc > 3))    /* Test for correct number of arguments */
     {
         fprintf(stderr, "Usage: %s <Server IP> <Echo Word> [<Echo Port>]\n",
             argv[0]);
         exit(1);
     }
     servIP = argv[1];                /* First arg: server IP address (dotted quad) */
-    echoString = argv[2];         /* Second arg: string to echo */
+    //message = argv[2];         /* Second arg: string to echo */
 
-    if (argc == 4)
-        echoServPort = atoi(argv[3]);    /* Use given port, if any */
+    if (argc == 3)
+        echoServPort = atoi(argv[2]);    /* Use given port, if any */
     else
         echoServPort = 7;       /* 7 is the well-known port for the echo service */
 
@@ -46,33 +50,68 @@ int main(int argc, char* argv[])
     echoServAddr.sin_port = htons(echoServPort);   /* Server port */
 
     /* Establish the connection to the echo server */
-    if (connect(sock, (struct sockaddr*)&echoServAddr, sizeof(echoServAddr)) < 0)   	DieWithError("connect() failed");
+    //if (connect(sock, (struct sockaddr*)&echoServAddr, sizeof(echoServAddr)) < 0)   	DieWithError("connect() failed");
 
-    echoStringLen = strlen(echoString);          /* Determine input length */
+    for(;;) {
 
-    /* Send the string to the server */
-    if (send(sock, echoString, echoStringLen, 0) != echoStringLen)
-        DieWithError("send() sent a different number of bytes than expected");
+        printf("Awaiting image filepath input:\n");
+        std::cout << std::filesystem::current_path() << "\n";
 
-    /* Receive the same string back from the server */
-    totalBytesRcvd = 0;	      /* Count of total bytes received     */
-    printf("Received: ");                /* Setup to print the echoed string */
+        std::string FileAddress;
+        std::vector<char> imageBinary;
+        uint32_t numBytes;
+        std::cin >> FileAddress;
 
-    while (totalBytesRcvd < echoStringLen)
-    {
-        /* Receive up to the buffer size (minus 1 to leave space for
-                                     a null terminator) bytes from the sender */
-        if ((bytesRcvd = recv(sock, echoBuffer, RCVBUFSIZE - 1, 0)) <= 0)            	DieWithError("recv() failed or connection closed prematurely");
-        totalBytesRcvd += bytesRcvd;   /* Keep tally of total bytes */
-        echoBuffer[bytesRcvd] = '\0';  /* Terminate the string! */
-        printf("%s", echoBuffer);      /* Print the echo buffer */
+        printf("Filename received\n");
+
+        std::fstream imageIn("testcode.png", std::ios::binary);
+
+        if(imageIn.fail()){
+            DieWithError("File does not exist");
+        }
+
+        numBytes = imageIn.tellg();
+        imageBinary[numBytes];
+        message[numBytes + sizeof(numBytes)];
+
+        char ch;
+        while(!imageIn.eof()){
+            ch = imageIn.get();
+            imageBinary.push_back(ch);
+        }
+
+        memcpy(message, &numBytes, sizeof(numBytes));
+        memcpy(message + sizeof(numBytes), &imageBinary, numBytes);
+
+        messageLen = strlen(message);          /* Determine input length */
+
+        printf("%c %c %c %c", message[0], message[1], message[2], message[3]);
+
+        /* Send the string to the server */
+        if (send(sock, message, messageLen, 0) != messageLen)
+            DieWithError("send() sent a different number of bytes than expected");
+
+        /* Receive the same string back from the server */
+        totalBytesRcvd = 0;          /* Count of total bytes received     */
+        printf("Received: ");                /* Setup to print the echoed string */
+
+        while (totalBytesRcvd < messageLen) {
+            /* Receive up to the buffer size (minus 1 to leave space for
+                                         a null terminator) bytes from the sender */
+            if ((bytesRcvd = recv(sock, echoBuffer, RCVBUFSIZE - 1, 0)) <= 0)
+                DieWithError("recv() failed or connection closed prematurely");
+            totalBytesRcvd += bytesRcvd;   /* Keep tally of total bytes */
+            echoBuffer[bytesRcvd] = '\0';  /* Terminate the string! */
+            printf("%s", echoBuffer);      /* Print the echo buffer */
+        }
+        printf("\n");    /* Print a final linefeed */
+        close(sock);
+        exit(0);
     }
-    printf("\n");    /* Print a final linefeed */
-    close(sock);
-    exit(0);
 }
 
 void DieWithError(const char *errorMsg){
     printf("%s error", errorMsg);
+    exit(1);
 }
 
