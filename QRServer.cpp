@@ -12,6 +12,7 @@
 #include <netdb.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <sys/select.h>
 
 #define TRUE 1
 #define FALSE 0
@@ -19,9 +20,7 @@
 #define DEFAULT_RATE 3      //sets the default rate to 3
 #define DEFAULT_MAX_USER 3  //sets the default max user to 3
 #define DEFAULT_TIME_OUT 80 //sets the default time out to 80
-#define RCVBUFSIZE 50000 //50 kb for receiving
-
-char* buffer = new char[RCVBUFSIZE];
+#define RCVBUFSIZE 20481 //50 kb for receiving
 
 void DieWithError(const char *errorMsg);     /* Error handling function */
 //also communicate with client, diff errors so if statements
@@ -31,8 +30,7 @@ void DieWithError(const char *errorMsg);     /* Error handling function */
 void HandleTCPClient(int clntSocket);       /* TCP client handling function */
 //logic of decoding QR code and sending it back
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     int opt = TRUE;
     int masterSocket, addressLength, newSocket, clntSocket[3], activity, i, valRead, sd;
     int maxSd;
@@ -41,32 +39,32 @@ int main(int argc, char *argv[])
     int maxUsers = DEFAULT_MAX_USER;
     int timeOut = DEFAULT_TIME_OUT;
     struct sockaddr_in address; //address info of socket
-    char buffer[20481]; // 20kb buffer
+    char buffer[RCVBUFSIZE]; // 20kb buffer
 
     //set of socket descriptors
     fd_set readfds;
 
     //a message
-    char *message = "Echo message \r\n";
+    const char *message = "Echo message \r\n";
 
     //check for correct number of arguments
-    if (argc != 4){}
-    fprintf(stderr, "Usage: %s <Server Port>\n", argv[0]);
-    exit(1);
-
+    if (argc != 4) {
+        fprintf(stderr, "Usage: %s <Server Port>\n", argv[0]);
+        exit(1);
+    }
     //initialise all clntSocket[] to 0 so not check
-    for (i=0; i < mac_clients; i++){
+    for (i = 0; i < maxUsers; i++) {
         clntSocket[i] = 0;
     }
 
     //create a master socket for incoming connections
-    if ((masterSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0){
+    if ((masterSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
         DieWithError("socket failed");
         exit(EXIT_FAILURE);
     }
 
     //set master socket to allow multiple connections
-    if(setsockopt(masterSocket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0){
+    if (setsockopt(masterSocket, SOL_SOCKET, SO_REUSEADDR, (char *) &opt, sizeof(opt)) < 0) {
         DieWithError("setsockopt");
         exit(EXIT_FAILURE);
     }
@@ -78,20 +76,20 @@ int main(int argc, char *argv[])
     address.sin_port = htons(port);     //local port
 
     //bind socket to local port/address
-    if (bind(masterSocket, (struct sockaddr *)&address, sizeof(address)) < 0){
+    if (bind(masterSocket, (struct sockaddr *) &address, sizeof(address)) < 0) {
         DieWithError("bind failed");
         exit(EXIT_FAILURE);
     }
     fprintf(stderr, "Listener on port %d \n", port);
 
     //mark the socket so it will listen for incoming connections
-    if (listen(masterSocket, 0) < 0){
+    if (listen(masterSocket, 0) < 0) {
         DieWithError("listen");
         exit(EXIT_FAILURE);
     }
 
     //accept incoming connection
-    while(TRUE){
+    while (TRUE) {
         //set the size of the in-out param
         addressLength = sizeof(address);
         //wait for client to connect
@@ -103,30 +101,31 @@ int main(int argc, char *argv[])
         maxSd = masterSocket;
 
         //add child sockets to set
-        for (j = 0; j < maxUsers; j++){
+        for (int j = 0; j < maxUsers; j++) {
             //socket descriptor
             sd - clntSocket[j];
 
             //if valid socket descriptor then add to read list
-            if (sd > 0){
+            if (sd > 0) {
                 FD_SET(sd, &readfds);
             }
 
             //highest file descriptor number, need ti for the select function
-            if(sd > maxSd){
-                masSd = sd;
+            if (sd > maxSd) {
+                maxSd = sd;
             }
 
             //wait for activity for timeout
-            activity = select(maxSd + 1, &readfds, NULL, NULL, timeOut);
+            activity = select(maxSd + 1, &readfds, NULL, NULL, (struct timeval*)timeOut);
 
-            if((activity < 0) && (errno != EINTR)){
+            if ((activity < 0) && (errno != EINTR)) {
                 printf("select error");
             }
 
             //if something is happening in the master socket, it's an incoming connection
-            if(FD_ISSET(masterSocket, &readfds)){
-                if((newSocket = accept(masterSocket, (struct sockaddr*)&address, (socklen_t*)&addressLength)) < 0){
+            if (FD_ISSET(masterSocket, &readfds)) {
+                if ((newSocket = accept(masterSocket, (struct sockaddr *) &address, (socklen_t *) &addressLength)) <
+                    0) {
                     DieWithError("accept");
                     exit(EXIT_FAILURE);
                 }
@@ -134,16 +133,16 @@ int main(int argc, char *argv[])
                 HandleTCPClient(newSocket);
 
                 //send new connection greeting message
-                if(send(newSocket, message, strlen(message), 0) != strlen(message)){
+                if (send(newSocket, message, strlen(message), 0) != strlen(message)) {
                     DieWithError("send");
                 }
 
                 //puts("welcome message sent successfully");
 
                 //add new socket to array of sockets
-                for (k = 0; k < maxUsers; k++){
+                for (int k = 0; k < maxUsers; k++) {
                     //if position is empty
-                    if(clntSocket[k] == 0){
+                    if (clntSocket[k] == 0) {
                         clntSocket[k] = newSocket;
                         printf("adding to list of sockets as %d\n", k);
                         break;
@@ -152,7 +151,7 @@ int main(int argc, char *argv[])
             }
 
             //else it's some IO operation on some other socket
-            for(j = 0; j < maxUsers; j++) {
+            for (j = 0; j < maxUsers; j++) {
                 sd = clntSocket[j];
                 if (FD_ISSET(sd, &readfds)) {
                     //check if it was for closing, read incoming msg
@@ -176,7 +175,7 @@ int main(int argc, char *argv[])
         }
         return 0;
     }
-
+}
 
 void DieWithError(const char *errorMsg){
     printf("%s error", errorMsg);
